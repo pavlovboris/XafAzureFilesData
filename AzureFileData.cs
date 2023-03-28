@@ -63,10 +63,13 @@ namespace DSERP.Module.BusinessObjects.ThirPartyBO
             byte[] bytes = new byte[stream.Length];
             stream.Read(bytes, 0, bytes.Length);
 
+            size = bytes.Length;
+
             var azureFile = AzureShareFile();  // azureDirectory.GetFileClient(fileName);
 
             azureFile.Create(stream.Length);
             stream.Position = 0;
+
             azureFile.UploadRange(new HttpRange(0,stream.Length),stream);
 
             //TODO add the sharing info
@@ -75,19 +78,15 @@ namespace DSERP.Module.BusinessObjects.ThirPartyBO
    
         public virtual void SaveToStream(Stream stream)
         {
-
-
             var azureFile = AzureShareFile();
 
-
-
-            var file = azureFile.Download();
+            //var file = azureFile.Download();
             var TaskResponse = System.Threading.Tasks.Task.Run(() => azureFile.DownloadAsync());
             TaskResponse.Wait();
 
             var t = System.Threading.Tasks.Task.Factory.FromAsync(stream.BeginWrite, stream.EndWrite, TaskResponse.Result.Value.Content.Bytes(), 0, Size, null);
             t.Wait();
-            stream.Flush();
+          //  stream.Flush();
 
         }
         public void Clear()
@@ -116,9 +115,9 @@ namespace DSERP.Module.BusinessObjects.ThirPartyBO
         {
             base.OnDeleted();
 
-            //var azureFile = AzureShareFile();
+            var azureFile = AzureShareFile();
 
-            //azureFile?.DeleteIfExists();
+            azureFile?.DeleteIfExists();
         }
 
         #region IEmptyCheckable Members
