@@ -1,6 +1,7 @@
-﻿using Azure;
+using Azure;
 using Azure.Storage.Files.Shares;
 using Azure.Storage.Files.Shares.Models;
+using Azure.Storage.Sas;
 using DevExpress.ExpressApp.Utils;
 using DevExpress.Persistent.Base;
 using DevExpress.Persistent.BaseImpl;
@@ -33,6 +34,22 @@ namespace DSERP.Module.BusinessObjects.ThirPartyBO
             : base(session)
         {
         }
+        
+        public Uri GetReadUri()
+        {
+            return AzureShareFile().GenerateSasUri(ShareFileSasPermissions.Read,DateTimeOffset.Now.AddHours(1));
+        }
+
+        public ShareFileClient AzureShareFile()
+        {
+            var shareClient = new ShareClient(System.Configuration.ConfigurationManager.AppSettings["AzureConnectionString"], System.Configuration.ConfigurationManager.AppSettings["AzureFileShare"]);
+
+            var azureDirectory = shareClient.GetDirectoryClient(defaultFolder);
+
+            var azureFile = azureDirectory.GetFileClient(fileName);
+
+            return azureFile;
+        }
 
         public virtual void LoadFromStream(string fileName, Stream stream)
         {
@@ -46,11 +63,7 @@ namespace DSERP.Module.BusinessObjects.ThirPartyBO
             byte[] bytes = new byte[stream.Length];
             stream.Read(bytes, 0, bytes.Length);
 
-            var shareClient = new ShareClient(System.Configuration.ConfigurationManager.AppSettings["AzureConnectionString"], System.Configuration.ConfigurationManager.AppSettings["AzureFileShare"] );
-
-            var azureDirectory = shareClient.GetDirectoryClient(defaultFolder);
-
-            var azureFile = azureDirectory.GetFileClient(fileName);
+            var azureFile = AzureShareFile();  // azureDirectory.GetFileClient(fileName);
 
             azureFile.Create(stream.Length);
             stream.Position = 0;
@@ -63,11 +76,8 @@ namespace DSERP.Module.BusinessObjects.ThirPartyBO
         public virtual void SaveToStream(Stream stream)
         {
 
-            var shareClient = new ShareClient(System.Configuration.ConfigurationManager.AppSettings["AzureConnectionString"], System.Configuration.ConfigurationManager.AppSettings["AzureFileShare"]);
 
-            var azureDirectory = shareClient.GetDirectoryClient(defaultFolder);
-
-            var azureFile = azureDirectory.GetFileClient(fileName);
+            var azureFile = AzureShareFile();
 
 
 
@@ -86,13 +96,9 @@ namespace DSERP.Module.BusinessObjects.ThirPartyBO
             //Content = null;
 
 
-            var shareClient = new ShareClient(System.Configuration.ConfigurationManager.AppSettings["AzureConnectionString"], System.Configuration.ConfigurationManager.AppSettings["AzureFileShare"]);
+            var azureFile = AzureShareFile();
 
-            var azureDirectory = shareClient.GetDirectoryClient(defaultFolder);
-
-            var azureFile = azureDirectory.GetFileClient(fileName);
-
-            azureFile.DeleteIfExists();
+            azureFile?.DeleteIfExists();
             FileName = String.Empty;
         }
         public override string ToString()
@@ -104,6 +110,15 @@ namespace DSERP.Module.BusinessObjects.ThirPartyBO
         {
             get { return fileName; }
             set { SetPropertyValue("FileName", ref fileName, value); }
+        }
+
+        protected override void OnDeleted()
+        {
+            base.OnDeleted();
+
+            //var azureFile = AzureShareFile();
+
+            //azureFile?.DeleteIfExists();
         }
 
         #region IEmptyCheckable Members
